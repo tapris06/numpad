@@ -20,7 +20,7 @@ Test("head timing boundaries favor better grades", () =>
     (long Time, Grade? Grade)[] cases = [
         (-120001, null), (-120000, Grade.Miss), (-90001, Grade.Miss), (-90000, Grade.Good),
         (-60001, Grade.Good), (-60000, Grade.Perfect), (-30001, Grade.Perfect),
-        (-30000, Grade.DetailedPerfect), (0, Grade.DetailedPerfect), (30000, Grade.DetailedPerfect),
+        (-30000, Grade.Colorful), (0, Grade.Colorful), (30000, Grade.Colorful),
         (30001, Grade.Perfect), (60000, Grade.Perfect), (60001, Grade.Good),
         (90000, Grade.Good), (90001, Grade.Miss)
     ];
@@ -29,7 +29,7 @@ Test("head timing boundaries favor better grades", () =>
 
 Test("sustain thresholds use exact integer comparisons", () =>
 {
-    Equal(Grade.DetailedPerfect, Rules.SustainGrade(2000, 2000));
+    Equal(Grade.Colorful, Rules.SustainGrade(2000, 2000));
     Equal(Grade.Perfect, Rules.SustainGrade(1999, 2000));
     Equal(Grade.Perfect, Rules.SustainGrade(1500, 2000));
     Equal(Grade.Good, Rules.SustainGrade(1499, 2000));
@@ -122,13 +122,13 @@ Test("earliest eligible note wins over closest note", () =>
 {
     var session = new PlaySession(Make(new(0, 6, Axis.C, 1000000), new(1, 6, Axis.R, 1080000)));
     session.Press(6, 1050000); Equal(Grade.Perfect, session.States[0].Head!.Value); Check(session.States[1].Head is null);
-    session.Release(6, 1051000); session.Press(6, 1080000); Equal(Grade.DetailedPerfect, session.States[1].Head!.Value);
+    session.Release(6, 1051000); session.Press(6, 1080000); Equal(Grade.Colorful, session.States[1].Head!.Value);
 });
 Test("pre-held keys do not hit a new head", () =>
 {
     var session = new PlaySession(Make(new NoteEvent(0, 6, Axis.C, 1000000)));
     session.Press(6, 879999); session.AdvanceTo(1000000); Check(session.States[0].Head is null);
-    session.Release(6, 1001000); session.Press(6, 1010000); Equal(Grade.DetailedPerfect, session.States[0].Head!.Value);
+    session.Release(6, 1001000); session.Press(6, 1010000); Equal(Grade.Colorful, session.States[0].Head!.Value);
 });
 Test("partial chord produces only the handled key judgment", () =>
 {
@@ -140,7 +140,7 @@ Test("extra keys can consume an upcoming note as early miss", () =>
 {
     var session = new PlaySession(Make(new(0, 6, Axis.C, 1000000), new(1, 3, Axis.R, 1100000)));
     session.PressKeys([6, 3], 1000000);
-    Equal(Grade.DetailedPerfect, session.States[0].Head!.Value); Equal(Grade.Miss, session.States[1].Head!.Value); Equal(1, session.Score.Combo);
+    Equal(Grade.Colorful, session.States[0].Head!.Value); Equal(Grade.Miss, session.States[1].Head!.Value); Equal(1, session.Score.Combo);
 });
 Test("empty key presses have no score or combo penalty", () =>
 {
@@ -163,7 +163,7 @@ Test("late good is inclusive and expiry follows one microsecond later", () =>
 Test("good head uses actual hit time for full sustain", () =>
 {
     var session = Hold(); session.Press(6, 1080000); session.Release(6, 3000000);
-    Equal(Grade.Good, session.States[0].Head!.Value); Equal(Grade.DetailedPerfect, session.States[0].Sustain!.Value);
+    Equal(Grade.Good, session.States[0].Head!.Value); Equal(Grade.Colorful, session.States[0].Sustain!.Value);
     Equal(840000L, session.Score.Score);
 });
 Test("missed head uses scheduled interval: 75 percent", () =>
@@ -185,7 +185,7 @@ Test("late grab cannot turn 25 percent into full sustain", () =>
 Test("early miss can still maintain the whole scheduled interval", () =>
 {
     var session = Hold(); session.Press(6, 900000); session.Release(6, 3000000);
-    Equal(Grade.Miss, session.States[0].Head!.Value); Equal(Grade.DetailedPerfect, session.States[0].Sustain!.Value);
+    Equal(Grade.Miss, session.States[0].Head!.Value); Equal(Grade.Colorful, session.States[0].Sustain!.Value);
     Equal(673333L, session.Score.Score);
 });
 Test("regrab accumulates without resetting the reference", () =>
@@ -201,7 +201,7 @@ Test("short hold completed before late head has defined zero sustain", () =>
 });
 Test("simultaneous mixed judgments reset then count successes, independent of order", () =>
 {
-    Grade[][] orders = [[Grade.DetailedPerfect, Grade.Miss, Grade.Good], [Grade.Miss, Grade.Good, Grade.DetailedPerfect], [Grade.Good, Grade.DetailedPerfect, Grade.Miss]];
+    Grade[][] orders = [[Grade.Colorful, Grade.Miss, Grade.Good], [Grade.Miss, Grade.Good, Grade.Colorful], [Grade.Good, Grade.Colorful, Grade.Miss]];
     foreach (var order in orders)
     {
         var score = new ScoreState(200);

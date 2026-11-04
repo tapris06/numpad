@@ -46,7 +46,7 @@ public partial class GameRoot : Node2D
     private PlaySession? _session;
     private long _originTick, _audioZeroTick, _audioOutputLatencyUs, _playEndUs, _pauseTick, _pausedSongUs;
     private long _lastSongUs = long.MinValue;
-    private bool _audioStarted, _musicFinished, _testExit, _captureBusy, _debug;
+    private bool _audioStarted, _musicFinished, _testExit, _captureBusy, _debug, _invertColors;
     private string _error = "", _captureDir = "";
     private double _age, _lastJudgmentAt = -10;
     private Grade? _lastGrade;
@@ -276,9 +276,9 @@ public partial class GameRoot : Node2D
 
     private void FinishPlay()
     {
-        _screen = Screen.Results;
+        _screen = IsExample ? Screen.Select : Screen.Results;
         _session!.ReleaseAll(Math.Max(_session.TimeUs, JudgeUs));
-        RequestCapture("results");
+        if (!IsExample) RequestCapture("results");
         if (_testExit)
         {
             var score = _session.Score;
@@ -302,6 +302,7 @@ public partial class GameRoot : Node2D
             }
             ExitAfterCapture();
         }
+        else if (IsExample) ReturnToSelect();
     }
 
     private async void ExitAfterCapture()
@@ -419,6 +420,7 @@ public partial class GameRoot : Node2D
             case "open": _picker.PopupCentered(new Vector2I(940, 650)); break;
             case "songs-up": ScrollSongList(-1); break;
             case "songs-down": ScrollSongList(1); break;
+            case "invert-colors": _invertColors = !_invertColors; SaveSettings(); break;
             case "speed-": _speedTenths = Math.Max(MinSpeedTenths, _speedTenths - 1); SaveSettings(); break;
             case "speed+": _speedTenths = Math.Min(MaxSpeedTenths, _speedTenths + 1); SaveSettings(); break;
             case "offset-": _offsetMs = Math.Max(-150, _offsetMs - 5); SaveSettings(); break;
@@ -443,6 +445,7 @@ public partial class GameRoot : Node2D
             _offsetMs = Math.Clamp(_settings.GetValue("play", "offset", 0).AsInt32(), -150, 150);
             _songOffsetMs = Math.Clamp(_settings.GetValue("play", "song_offset", 0).AsInt32(), -MaxSongOffsetMs, MaxSongOffsetMs);
             _volume = Math.Clamp((float)_settings.GetValue("play", "volume", 0.7).AsDouble(), 0, 1);
+            _invertColors = _settings.GetValue("play", "invert_colors", false).AsBool();
             int savedFps = _settings.GetValue("play", "fps", 240).AsInt32();
             int savedIndex = Array.IndexOf(_fpsOptions, savedFps);
             _fpsIndex = savedIndex >= 0 ? savedIndex : 3;
@@ -457,6 +460,7 @@ public partial class GameRoot : Node2D
         _settings.SetValue("play", "offset", _offsetMs);
         _settings.SetValue("play", "song_offset", _songOffsetMs);
         _settings.SetValue("play", "volume", _volume);
+        _settings.SetValue("play", "invert_colors", _invertColors);
         _settings.SetValue("play", "fps", _fpsOptions[_fpsIndex]);
         _settings.Save("user://settings.cfg");
     }

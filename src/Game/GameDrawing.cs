@@ -5,9 +5,33 @@ namespace NumpadNine.Game;
 
 public partial class GameRoot
 {
-    private static readonly Color Paper = new("#fbfaf7"), Surface = new("#ffffff"), Ink = new("#252c3a"),
-        Muted = new("#78808d"), Line = new("#e7e6e1"), Red = new("#e45660"), Blue = new("#397dd8"),
-        Yellow = new("#e8bd36"), Green = new("#4b9f75"), Purple = new("#9463c2"), Orange = new("#ec893e");
+    private sealed record ScreenColors(Color Paper, Color Surface, Color Ink, Color Muted, Color Line,
+        Color Hover, Color Lane, Color LaneGuide);
+    private static readonly ScreenColors LightColors = new(new("#fbfaf7"), Colors.White, new("#252c3a"),
+        new("#78808d"), new("#e7e6e1"), new("#f1f1ed"), new("#f2f1ed"), new("#e7e5df"));
+    private static readonly ScreenColors DarkColors = new(Colors.Black, new("#15181f"), new("#eef1f6"),
+        new("#a9b1bd"), new("#303642"), new("#252a34"), new("#14171d"), new("#292f39"));
+    private static readonly Color Red = new("#e45660"), Blue = new("#397dd8"), Yellow = new("#e8bd36"),
+        Green = new("#4b9f75"), Purple = new("#9463c2"), Orange = new("#ec893e");
+    private static readonly Color RgbRed = new("#e44550"), RgbBlue = new("#2b75d8"), RgbGreen = new("#3e9f6f"),
+        RgbYellow = new("#e8b924"), Cyan = new("#31c6df"), Magenta = new("#df55c9");
+    private static readonly Color[] LightRainbow = [new("#ff5369"), new("#ff9e4a"), new("#ffdb48"),
+        new("#4ad678"), new("#3ed8e8"), new("#4d9bff"), new("#b787ff")];
+    private static readonly Color[] DarkRainbow = [new("#ff8595"), new("#ffb573"), new("#ffe461"),
+        new("#75e6a1"), new("#6fe8f4"), new("#8bbbff"), new("#d7afff")];
+    private static readonly Grade[] GradeOrder = [Grade.Colorful, Grade.Perfect, Grade.Good, Grade.Miss];
+    private ScreenColors Palette => _invertColors ? DarkColors : LightColors;
+    private Color[] Rainbow => _invertColors ? DarkRainbow : LightRainbow;
+    private Color Paper => Palette.Paper;
+    private Color Surface => Palette.Surface;
+    private Color Ink => Palette.Ink;
+    private Color Muted => Palette.Muted;
+    private Color Line => Palette.Line;
+    private Color OnInk => _invertColors ? Colors.Black : Colors.White;
+    private float KeyFillTint => _invertColors ? 0.70f : 0.88f;
+    private const float RgbKeyBorderTint = 0.48f;
+    private Color Tint(Color color, float amount) => _invertColors ? color.Darkened(amount) : color.Lightened(amount);
+    private Color KeyLabel(Color color, float amount) => _invertColors ? color.Lightened(amount) : color.Darkened(amount);
     private SystemFont _font = null!, _bold = null!, _numbers = null!;
     private readonly StyleBoxFlat _box = new();
     private float W => GetViewportRect().Size.X;
@@ -58,30 +82,93 @@ public partial class GameRoot
         _buttons[id] = rect;
         bool hover = rect.HasPoint(_mouse);
         Color fill = primary ? Ink : Surface;
-        if (hover) fill = primary ? Ink.Lightened(0.12f) : new Color("#f1f1ed");
+        if (hover) fill = primary ? Tint(Ink, 0.12f) : Palette.Hover;
         Round(rect, fill, 10, primary ? null : Line);
-        Center(text, rect, size, primary ? Colors.White : Ink, true);
+        Center(text, rect, size, primary ? OnInk : Ink, true);
     }
 
     private void Logo(float x, float y, float unit = 8)
     {
-        Color[] colors = [Red, Blue, Yellow, Blue, Yellow, Red, Yellow, Red, Blue];
-        for (int i = 0; i < 9; i++) Round(new(x + (i % 3) * (unit + 3), y + (i / 3) * (unit + 3), unit, unit), colors[i], 2);
+        for (int i = 0; i < 9; i++)
+        {
+            int row = i / 3, column = i % 3;
+            int key = 7 - row * 3 + column;
+            Round(new(x + column * (unit + 3), y + row * (unit + 3), unit, unit), Mixed(ColorBit(key)), 2);
+        }
     }
 
     private static int ColorBit(int key) => key switch { 7 or 6 or 2 => 1, 8 or 4 or 3 => 2, _ => 4 };
-    private static Color Mixed(int bits) => bits switch
+    private Color Mixed(int bits) => bits switch
     {
-        1 => Red, 2 => Blue, 4 => Yellow, 3 => Purple, 5 => Orange, 6 => Green, 7 => Ink, _ => Muted
+        1 => _invertColors ? RgbRed : Red,
+        2 => _invertColors ? RgbBlue : Blue,
+        4 => _invertColors ? RgbGreen : Yellow,
+        3 => _invertColors ? Magenta : Purple,
+        5 => _invertColors ? RgbYellow : Orange,
+        6 => _invertColors ? Cyan : Green,
+        7 => _invertColors ? Colors.White : Ink,
+        _ => Muted
     };
     private static string GradeName(Grade grade) => grade switch
     {
-        Grade.DetailedPerfect => "세부 퍼펙트", Grade.Perfect => "퍼펙트", Grade.Good => "굿", _ => "미스"
+        Grade.Colorful => "COLORFUL", Grade.Perfect => "PERFECT", Grade.Good => "GOOD", _ => "MISS"
     };
-    private static Color GradeColor(Grade grade) => grade switch
+    private Color GradeColor(Grade grade) => grade switch
     {
-        Grade.DetailedPerfect => Purple, Grade.Perfect => Blue, Grade.Good => Green, _ => Red
+        Grade.Colorful => Rainbow[6], Grade.Perfect => Rainbow[2], Grade.Good => Rainbow[5], _ => Rainbow[0]
     };
+
+    private void DrawGradeText(string label, Grade grade, Vector2 position, int size, float alpha = 1f)
+    {
+        var outline = new Color(Ink, alpha * 0.90f);
+        int outlineSize = size >= 24 ? 2 : 1;
+        if (grade != Grade.Colorful)
+        {
+            Color color = GradeColor(grade);
+            color.A = alpha;
+            if (!_invertColors)
+                DrawStringOutline(_bold, position, label, HorizontalAlignment.Left, -1, size, outlineSize, outline);
+            Text(label, position.X, position.Y, size, color, true);
+            return;
+        }
+
+        Color[] colors = Rainbow;
+        var canvas = GetCanvasItem();
+        for (int i = 0; i < label.Length; i++)
+        {
+            Color color = colors[i * colors.Length / label.Length];
+            color.A = alpha;
+            if (!_invertColors)
+                _bold.DrawCharOutline(canvas, position, label[i], size, outlineSize, outline);
+            _bold.DrawChar(canvas, position, label[i], size, color);
+            position.X += _bold.GetCharSize(label[i], size).X;
+        }
+    }
+
+    private void CenterGradeText(string label, Grade grade, Rect2 rect, int size, float alpha = 1f)
+    {
+        float width = 0;
+        if (grade == Grade.Colorful)
+            foreach (char letter in label) width += _bold.GetCharSize(letter, size).X;
+        else width = _bold.GetStringSize(label, HorizontalAlignment.Left, -1, size).X;
+        Vector2 center = rect.GetCenter();
+        DrawGradeText(label, grade, new(center.X - width / 2,
+            center.Y + (_bold.GetAscent(size) - _bold.GetDescent(size)) / 2), size, alpha);
+    }
+
+    private void DrawGradeMarker(Grade grade, Vector2 center, float radius)
+    {
+        if (grade != Grade.Colorful)
+        {
+            DrawCircle(center, radius, GradeColor(grade));
+            return;
+        }
+
+        Color[] colors = Rainbow;
+        float step = Mathf.Tau / colors.Length;
+        for (int i = 0; i < colors.Length; i++)
+            DrawArc(center, radius - 1, i * step, (i + 1) * step, 4, colors[i], 2, true);
+    }
 
     public override void _Draw()
     {
@@ -97,7 +184,7 @@ public partial class GameRoot
         if (_debug)
         {
             Round(new(16, H - 44, 550, 30), Ink, 6);
-            Text($"FPS {Engine.GetFramesPerSecond()}   song {SongUs / 1e6:F3}s   input {_offsetMs:+0;-0;0}ms", 27, H - 23, 14, Colors.White);
+            Text($"FPS {Engine.GetFramesPerSecond()}   song {SongUs / 1e6:F3}s   input {_offsetMs:+0;-0;0}ms", 27, H - 23, 14, OnInk);
         }
     }
 
@@ -139,7 +226,7 @@ public partial class GameRoot
             Round(rect, Surface, 14, selected ? Ink : Line, selected ? 2 : 1);
             var icon = new Rect2(rect.Position.X + 18, rect.Position.Y + (compact ? 15 : 21),
                 compact ? 52 : 68, compact ? 52 : 72);
-            Round(icon, selected ? Ink : new Color("#f1f1ed"), 12);
+            Round(icon, selected ? Ink : Palette.Hover, 12);
             float logoUnit = compact ? 6 : 8, logoSize = logoUnit * 3 + 6;
             Logo(icon.GetCenter().X - logoSize / 2, icon.GetCenter().Y - logoSize / 2, logoUnit);
             float titleX = compact ? 160 : 176;
@@ -149,13 +236,15 @@ public partial class GameRoot
             string difficulty = song.Chart.Difficulty.Length > 0 ? song.Chart.Difficulty : "CUSTOM";
             Color difficultyColor = difficulty switch { "EASY" => Green, "NORMAL" => Blue, "HARD" => Red, _ => Muted };
             var tag = new Rect2(rect.End.X - 154, rect.Position.Y + (compact ? 16 : 22), 130, compact ? 26 : 30);
-            Round(tag, difficultyColor.Lightened(0.9f), 7);
+            Round(tag, Tint(difficultyColor, 0.9f), 7);
             Center(difficulty, tag, 12, difficultyColor, true);
             Text($"{song.Chart.Notes.Count} NOTES", rect.End.X - 151, rect.Position.Y + (compact ? 64 : 80), 13, Muted, true);
         }
         float panelX = W - 522;
         Round(new(panelX, 282, 450, 377), Surface, 16, Line);
         Text("키 배치", panelX + 28, 324, 22, Ink, true);
+        Button("invert-colors", _invertColors ? "색 반전 켜짐" : "색 반전 꺼짐",
+            new(panelX + 262, 300, 160, 38), _invertColors, 15);
         DrawPreviewGrid(new(panelX + 117, 354), 62);
         Text("FPS 제한", panelX + 28, 587, 13, Muted, true);
         for (int i = 0; i < _fpsOptions.Length; i++)
@@ -183,11 +272,13 @@ public partial class GameRoot
         float exampleWidth = Math.Min(200, cardsWidth * 0.34f);
         float playWidth = cardsWidth - exampleWidth - 12;
         Button("play", "플레이 시작  →", new(72, H - 142, playWidth, 62), true, 21);
-        Button("example", "예시 보기", new(84 + playWidth, H - 142, exampleWidth, 62), size: 18);
+        Button("example", "오토플레이", new(84 + playWidth, H - 142, exampleWidth, 62), size: 18);
         Button("open", "채보 파일 열기", new(panelX, H - 142, 450, 62), size: 18);
         if (_error.Length > 0)
         {
-            Round(new(72, H - 310, cardsWidth, 56), new Color("#fff0ed"), 8, new Color("#f0d4ce"));
+            Color errorFill = _invertColors ? Red.Darkened(0.88f) : new("#fff0ed");
+            Color errorBorder = _invertColors ? Red.Darkened(0.65f) : new("#f0d4ce");
+            Round(new(72, H - 310, cardsWidth, 56), errorFill, 8, errorBorder);
             Text(_error.Length > 88 ? _error[..88] + "…" : _error, 87, H - 276, 14, Red);
         }
     }
@@ -201,8 +292,8 @@ public partial class GameRoot
                 int key = keys[row, col];
                 Color color = Mixed(ColorBit(key));
                 var rect = new Rect2(origin + new Vector2(col * (size + 8), row * (size + 8)), new(size, size));
-                Round(rect, color.Lightened(0.88f), 12, color.Lightened(0.65f));
-                Center(key.ToString(), rect, 23, color.Darkened(0.25f), true);
+                Round(rect, Tint(color, KeyFillTint), 12, Tint(color, _invertColors ? RgbKeyBorderTint : 0.65f));
+                Center(key.ToString(), rect, 23, KeyLabel(color, 0.25f), true);
                 DrawLine(new(rect.Position.X + 17, rect.End.Y - 11), new(rect.End.X - 17, rect.End.Y - 11), color, 3, true);
             }
     }
@@ -216,12 +307,15 @@ public partial class GameRoot
         string modeLabel = _playMode switch
         {
             PlayMode.Auto => "  ·  AUTO PLAY",
-            PlayMode.Example => "  ·  예시 연주",
+            PlayMode.Example => "  ·  오토플레이",
             _ => ""
         };
         Text(_session.Chart.Difficulty + modeLabel, 343, 88, 11, Muted, true);
-        Number(_session.Score.Score.ToString("N0"), W - 365, 75, 38);
-        Text("SCORE", W - 363, 40, 10, Muted, true);
+        if (!IsExample)
+        {
+            Number(_session.Score.Score.ToString("N0"), W - 365, 75, 38);
+            Text("SCORE", W - 363, 40, 10, Muted, true);
+        }
         Button("pause", "일시정지", new(W - 154, 40, 90, 42), size: 13);
         DrawRect(new(64, 112, W - 128, 3), Line);
         float progress = (float)Math.Clamp((double)SongUs / Math.Max(_playEndUs, 1_000_000L), 0, 1);
@@ -232,10 +326,10 @@ public partial class GameRoot
         {
             float x = Grid.X + lane * (Cell + Gap);
             float y = Grid.Y + lane * (Cell + Gap);
-            Round(new(x, Top, Cell, LaneLength), new Color("#f2f1ed"), 8);
-            DrawLine(new(x + Cell / 2, Top + 10), new(x + Cell / 2, JudgeY), new Color("#e7e5df"), 1);
-            Round(new(JudgeX, y, LaneLength, Cell), new Color("#f2f1ed"), 8);
-            DrawLine(new(JudgeX, y + Cell / 2), new(Right - 10, y + Cell / 2), new Color("#e7e5df"), 1);
+            Round(new(x, Top, Cell, LaneLength), Palette.Lane, 8);
+            DrawLine(new(x + Cell / 2, Top + 10), new(x + Cell / 2, JudgeY), Palette.LaneGuide, 1);
+            Round(new(JudgeX, y, LaneLength, Cell), Palette.Lane, 8);
+            DrawLine(new(JudgeX, y + Cell / 2), new(Right - 10, y + Cell / 2), Palette.LaneGuide, 1);
         }
         Center("↓", new(Grid.X, Top - 43, GridSize, 30), 21, Muted);
         Text("←", Right - 24, Grid.Y - 22, 22, Muted);
@@ -247,34 +341,38 @@ public partial class GameRoot
         DrawHitFlashes();
 
         float centerX = JudgeX + 240;
-        var comboRect = new Rect2(centerX - 140, 185, 280, 104);
-        Center(_session.Score.Combo.ToString(), comboRect, 70, Ink, true);
-        Center("COMBO", new(centerX - 140, 287, 280, 28), 12, Muted, true);
-        if (_lastGrade.HasValue && _age - _lastJudgmentAt < 0.85)
-        {
-            float fade = 1 - (float)Math.Clamp((_age - _lastJudgmentAt - 0.45) / 0.4, 0, 1);
-            var color = GradeColor(_lastGrade.Value); color.A = fade;
-            Center(GradeName(_lastGrade.Value), new(centerX - 150, 344, 300, 42), 28, color, true);
-            if (_lastError.HasValue && _lastGrade != Grade.Miss)
-                Center($"{_lastError.Value / 1000.0:+0.0;-0.0;0.0} ms", new(centerX - 130, 392, 260, 24), 13, Muted);
-        }
-        float statX = W - 345;
-        Text("판정 기록", statX, 191, 13, Muted, true);
-        Grade[] grades = [Grade.DetailedPerfect, Grade.Perfect, Grade.Good, Grade.Miss];
-        for (int i = 0; i < grades.Length; i++)
-        {
-            float y = 234 + i * 49;
-            DrawCircle(new(statX + 5, y - 5), 4, GradeColor(grades[i]));
-            Text(GradeName(grades[i]), statX + 22, y, 16, Muted);
-            Number(_session.Score.Counts[grades[i]].ToString(), W - 103, y + 1, 21);
-        }
-        Text($"최대 콤보  {_session.Score.MaxCombo}", statX, 459, 14, Muted);
+        if (!IsExample) DrawPlayJudgments(_session.Score, centerX);
         if (SongUs < 0)
         {
             int count = Math.Max(1, (int)Math.Ceiling(-SongUs / 1e6));
             Round(new(centerX - 96, 330, 192, 108), Surface, 18, Line);
             Center(count.ToString(), new(centerX - 96, 333, 192, 76), 48, Blue, true);
         }
+    }
+
+    private void DrawPlayJudgments(ScoreState score, float centerX)
+    {
+        var comboRect = new Rect2(centerX - 140, 185, 280, 104);
+        Center(score.Combo.ToString(), comboRect, 70, Ink, true);
+        Center("COMBO", new(centerX - 140, 287, 280, 28), 12, Muted, true);
+        if (_lastGrade.HasValue && _age - _lastJudgmentAt < 0.85)
+        {
+            float fade = 1 - (float)Math.Clamp((_age - _lastJudgmentAt - 0.45) / 0.4, 0, 1);
+            CenterGradeText(GradeName(_lastGrade.Value), _lastGrade.Value, new(centerX - 150, 344, 300, 42), 28, fade);
+            if (_lastError.HasValue && _lastGrade != Grade.Miss)
+                Center($"{_lastError.Value / 1000.0:+0.0;-0.0;0.0} ms", new(centerX - 130, 392, 260, 24), 13, Muted);
+        }
+        float statX = W - 345;
+        Text("판정 기록", statX, 191, 13, Muted, true);
+        for (int i = 0; i < GradeOrder.Length; i++)
+        {
+            Grade grade = GradeOrder[i];
+            float y = 234 + i * 49;
+            DrawGradeMarker(grade, new(statX + 5, y - 5), 4);
+            DrawGradeText(GradeName(grade), grade, new(statX + 22, y), 16);
+            Number(score.Counts[grade].ToString(), W - 103, y + 1, 21);
+        }
+        Text($"최대 콤보  {score.MaxCombo}", statX, 459, 14, Muted);
     }
 
     private float NotePosition(Axis axis, long targetUs)
@@ -304,7 +402,7 @@ public partial class GameRoot
                     Rect2 rect = axis == Axis.C
                         ? new(Grid.X + lane * (Cell + Gap) + 12, p2, Cell - 24, Math.Max(1, p1 - p2))
                         : new(p1, Grid.Y + lane * (Cell + Gap) + 12, Math.Max(1, p2 - p1), Cell - 24);
-                    DrawRect(rect, color.Lightened(0.69f));
+                    DrawRect(rect, Tint(color, _invertColors ? 0.65f : 0.69f));
                     Rect2 stripe = axis == Axis.C
                         ? new(rect.GetCenter().X - 3, rect.Position.Y, 6, rect.Size.Y)
                         : new(rect.Position.X, rect.GetCenter().Y - 3, rect.Size.X, 6);
@@ -341,8 +439,8 @@ public partial class GameRoot
             Round(rect, color, 5);
             if (bits == 7)
             {
-                if (axis == Axis.C) DrawLine(rect.Position + new Vector2(10, 5), new(rect.End.X - 10, rect.Position.Y + 5), Colors.White, 2, true);
-                else DrawLine(rect.Position + new Vector2(5, 10), new(rect.Position.X + 5, rect.End.Y - 10), Colors.White, 2, true);
+                if (axis == Axis.C) DrawLine(rect.Position + new Vector2(10, 5), new(rect.End.X - 10, rect.Position.Y + 5), OnInk, 2, true);
+                else DrawLine(rect.Position + new Vector2(5, 10), new(rect.Position.X + 5, rect.End.Y - 10), OnInk, 2, true);
             }
         }
     }
@@ -368,8 +466,9 @@ public partial class GameRoot
                 lit = remaining * remaining;
             }
 
-            Round(rect, color.Lightened(0.88f).Lerp(color, lit), 13, color.Lightened(0.66f).Lerp(color, lit));
-            Center(key.ToString(), rect, 27, color.Darkened(0.3f).Lerp(Colors.White, lit), true);
+            Round(rect, Tint(color, KeyFillTint).Lerp(color, lit), 13,
+                Tint(color, _invertColors ? RgbKeyBorderTint : 0.66f).Lerp(color, lit));
+            Center(key.ToString(), rect, 27, KeyLabel(color, 0.3f).Lerp(OnInk, lit), true);
             if (lit < 1f)
             {
                 color.A *= 1f - lit;
@@ -396,7 +495,7 @@ public partial class GameRoot
                 DrawArc(center, 11 + t * 45, 0, Mathf.Tau, 32, color, 2, true);
                 if (!IsExample) DrawRect(KeyRect(flash.Key).Grow(t * 13), color, false, 2);
             }
-            else
+            else if (!IsExample)
             {
                 Color miss = new(Red, alpha * 0.5f);
                 DrawLine(center + new Vector2(-6, -6), center + new Vector2(6, 6), miss, 2, true);
@@ -408,7 +507,8 @@ public partial class GameRoot
     private void DrawPause()
     {
         _buttons.Clear();
-        DrawRect(new(Vector2.Zero, GetViewportRect().Size), new Color(0.14f, 0.17f, 0.22f, 0.54f));
+        Color overlay = _invertColors ? new(Colors.Black, 0.62f) : new(0.14f, 0.17f, 0.22f, 0.54f);
+        DrawRect(new(Vector2.Zero, GetViewportRect().Size), overlay);
         var panel = new Rect2(W / 2 - 230, H / 2 - 160, 460, 320);
         Round(panel, Paper, 22);
         Center("일시정지", new(panel.Position.X, panel.Position.Y + 28, 460, 53), 30, Ink, true);
@@ -420,12 +520,7 @@ public partial class GameRoot
     private void DrawResults()
     {
         if (_session is null) return;
-        DrawHeader(_playMode switch
-        {
-            PlayMode.Auto => "자동 연주 결과",
-            PlayMode.Example => "예시 연주 결과",
-            _ => "플레이 결과"
-        });
+        DrawHeader(_playMode == PlayMode.Auto ? "자동 연주 결과" : "플레이 결과");
         Text("플레이 완료", 104, 207, 43, Ink, true);
         Text(_session.Chart.Title + "  /  " + _session.Chart.Difficulty, 107, 249, 20, Muted);
         Round(new(104, 288, W - 208, 352), Surface, 20, Line);
@@ -433,22 +528,26 @@ public partial class GameRoot
         Number(_session.Score.Score.ToString("N0"), 140, 442, 83);
         Text("최대 콤보", 151, 508, 15, Muted);
         Number(_session.Score.MaxCombo.ToString(), 147, 571, 43);
-        if (_session.Score.Score == 1_010_000)
+        ScoreState score = _session.Score;
+        if (score.Judged > 0 && score.Counts[Grade.Miss] == 0)
         {
-            Round(new(315, 521, 220, 39), Purple.Lightened(0.91f), 8);
-            Center("ALL DETAILED PERFECT", new(315, 521, 220, 39), 11, Purple, true);
+            var (label, grade) = score.Counts[Grade.Colorful] == score.Judged ? ("AC  ·  ALL COLOR", Grade.Colorful)
+                : score.Counts[Grade.Good] == 0 ? ("AP  ·  ALL PERFECT", Grade.Perfect)
+                : ("FC  ·  FULL COMBO", Grade.Good);
+            var badge = new Rect2(315, 521, 220, 39);
+            Round(badge, Tint(GradeColor(grade), 0.91f), 8);
+            CenterGradeText(label, grade, badge, 14);
         }
         DrawLine(new(W / 2 + 54, 332), new(W / 2 + 54, 592), Line, 1);
-        Grade[] grades = [Grade.DetailedPerfect, Grade.Perfect, Grade.Good, Grade.Miss];
-        for (int i = 0; i < grades.Length; i++)
+        for (int i = 0; i < GradeOrder.Length; i++)
         {
+            Grade grade = GradeOrder[i];
             float y = 364 + i * 63;
-            DrawCircle(new(W / 2 + 102, y - 6), 5, GradeColor(grades[i]));
-            Text(GradeName(grades[i]), W / 2 + 125, y, 19, Muted);
-            Number(_session.Score.Counts[grades[i]].ToString(), W - 228, y + 3, 29);
+            DrawGradeMarker(grade, new(W / 2 + 102, y - 6), 5);
+            DrawGradeText(GradeName(grade), grade, new(W / 2 + 125, y), 19);
+            Number(score.Counts[grade].ToString(), W - 228, y + 3, 29);
         }
-        Button("restart", IsExample ? "예시 다시 보기  →" : "한 번 더 플레이  →",
-            new(104, 690, (W - 238) / 2, 65), true, 20);
+        Button("restart", "한 번 더 플레이  →", new(104, 690, (W - 238) / 2, 65), true, 20);
         Button("back", "곡 선택으로", new(W / 2 + 15, 690, (W - 238) / 2, 65), size: 19);
     }
 }

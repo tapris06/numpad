@@ -1,7 +1,7 @@
 namespace NumpadNine.Core;
 
 public enum Axis { R, C }
-public enum Grade { Miss, Good, Perfect, DetailedPerfect }
+public enum Grade { Miss, Good, Perfect, Colorful }
 public enum JudgmentPart { Head, Sustain }
 
 public sealed record NoteEvent(int Id, int Key, Axis Axis, long StartUs, long? EndUs = null)
@@ -62,7 +62,7 @@ public static class Rules
     public static Grade? HeadGrade(long errorUs)
     {
         if (errorUs < EarlyMissUs) return null;
-        if (errorUs is >= -30_000 and <= 30_000) return Grade.DetailedPerfect;
+        if (errorUs is >= -30_000 and <= 30_000) return Grade.Colorful;
         if (errorUs is >= -60_000 and <= 60_000) return Grade.Perfect;
         if (errorUs is >= -90_000 and <= 90_000) return Grade.Good;
         return Grade.Miss;
@@ -72,7 +72,7 @@ public static class Rules
     {
         if (lengthUs <= 0) return Grade.Miss;
         downUs = Math.Clamp(downUs, 0, lengthUs);
-        if (downUs == lengthUs) return Grade.DetailedPerfect;
+        if (downUs == lengthUs) return Grade.Colorful;
         if ((decimal)downUs * 4 >= (decimal)lengthUs * 3) return Grade.Perfect;
         if ((decimal)downUs * 2 >= lengthUs) return Grade.Good;
         return Grade.Miss;
@@ -80,7 +80,7 @@ public static class Rules
 
     public static long Points(Grade grade) => grade switch
     {
-        Grade.DetailedPerfect => 1_010_000,
+        Grade.Colorful => 1_010_000,
         Grade.Perfect => 1_000_000,
         Grade.Good => 500_000,
         _ => 0
