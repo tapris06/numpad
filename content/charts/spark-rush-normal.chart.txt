@@ -1,0 +1,53 @@
+&format=numpad-simai-v1
+&title=스파크 러시
+&artist=Numpad Nine · Original Demo
+&difficulty=NORMAL
+&audio=../audio/spark-rush.wav
+&first=2
+&inote=
+(200){4}
+// 단타 중심. 2키 동타는 최대 4회, 3키 동타 없음.
+
+// 1~8마디: 4비트 연속 단타
+7C,8C,9C,6C,
+5C,4C,1C,2C,
+3C,6C,9C,8C,
+7C,5C,3C,,
+7R,4R,1R,2R,
+5R,8R,9R,6R,
+3R,2R,1R,45R,
+{8}7R,8R,9R,,6R,,5R,,
+
+// 9~16마디: 양방향 전환
+{4}7C,8C,6R,5R,
+9C,6C,4R,1R,
+2R,3R,5C,8C,
+4C,7C,9R,,
+7C,6R,8C,5R,
+9C,4R,3C,2R,
+1C,8R,5C,47R,
+{8}4C,5C,6C,,9R,,2R,,
+
+// 17~24마디: 행·열 연속 패턴
+{4}1C,4C,7C,8C,
+2C,5C,8C,9C,
+9R,6R,3R,2R,
+8R,5R,2R,,
+7R,5C,3R,6C,
+1C,5R,9C,4R,
+8C,2R,6C,7C/5R,
+{8}1R,2R,3R,,5C,,8C,,
+
+// 25~32마디: 빠른 단타 마무리
+{4}7C,8R,9C,6R,
+5C,4R,1C,2R,
+3C,6R,9C,8R,
+7R,5C,3R,,
+4C,7R,8C,5R,
+9C,6R,3C,2R,
+1C,4R,7C,8C/6R,
+{8}7C,8C,9C,,5R,,2C,,
+
+// 마지막 입력 이후 음원 릴리스.
+{4},,,,
+E

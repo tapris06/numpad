@@ -1,0 +1,18 @@
+{
+  "format": "numpad-events-v1",
+  "metadata": { "title": "사양 확인용 예제", "difficulty": "test" },
+  "audio": "music.wav",
+  "first": 0,
+  "end_ms": 4500,
+  "notes": [
+    { "id": "n001", "type": "tap", "time_ms": 0, "direction": "C", "key": 6 },
+    { "id": "n002", "type": "tap", "time_ms": 0, "direction": "C", "key": 9 },
+    { "id": "n003", "type": "tap", "time_ms": 0, "direction": "R", "key": 3 },
+    { "id": "n004", "type": "hold", "time_ms": 1000, "end_ms": 3000, "direction": "C", "key": 7 },
+    { "id": "n005", "type": "hold", "time_ms": 1500, "end_ms": 2500, "direction": "C", "key": 4 },
+    { "id": "n006", "type": "tap", "time_ms": 4000, "direction": "C", "key": 2 },
+    { "id": "n007", "type": "tap", "time_ms": 4000, "direction": "C", "key": 8 },
+    { "id": "n008", "type": "tap", "time_ms": 4000, "direction": "C", "key": 5 },
+    { "id": "n009", "type": "tap", "time_ms": 4000, "direction": "R", "key": 7 }
+  ]
+}

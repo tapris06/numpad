@@ -1,0 +1,9 @@
+.tools/
+.godot/
+**/bin/
+**/obj/
+build/
+artifacts/
+*.user
+*.suo
+__pycache__/

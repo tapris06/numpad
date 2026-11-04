@@ -1,0 +1,17 @@
+&format=numpad-simai-v1
+&title=사양 확인용 예제
+&difficulty=test
+&audio=music.wav
+&first=0
+&inote=
+(120){4}
+6C/9C/3R,
+,
+7Ch[4:4],
+4Ch[4:2],
+,
+,
+,
+,
+2C/8C/5C/7R,
+E
