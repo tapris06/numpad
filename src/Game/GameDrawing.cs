@@ -180,7 +180,10 @@ public partial class GameRoot
         Center($"{_songOffsetMs:+0;-0;0} ms", new(924, settingY, 104, 48), 17, Ink, true);
         Button("song-offset+", "+", new(1028, settingY, 40, 48));
 
-        Button("play", "플레이 시작  →", new(72, H - 142, cardsWidth, 62), true, 21);
+        float exampleWidth = Math.Min(200, cardsWidth * 0.34f);
+        float playWidth = cardsWidth - exampleWidth - 12;
+        Button("play", "플레이 시작  →", new(72, H - 142, playWidth, 62), true, 21);
+        Button("example", "예시 보기", new(84 + playWidth, H - 142, exampleWidth, 62), size: 18);
         Button("open", "채보 파일 열기", new(panelX, H - 142, 450, 62), size: 18);
         if (_error.Length > 0)
         {
@@ -210,7 +213,13 @@ public partial class GameRoot
         Logo(64, 42, 8);
         Text("NUMPAD NINE", 108, 68, 21, Ink, true);
         Text(_session.Chart.Title, 342, 64, 21, Ink, true);
-        Text(_session.Chart.Difficulty + (_auto ? "  ·  AUTO PLAY" : ""), 343, 88, 11, Muted, true);
+        string modeLabel = _playMode switch
+        {
+            PlayMode.Auto => "  ·  AUTO PLAY",
+            PlayMode.Example => "  ·  예시 연주",
+            _ => ""
+        };
+        Text(_session.Chart.Difficulty + modeLabel, 343, 88, 11, Muted, true);
         Number(_session.Score.Score.ToString("N0"), W - 365, 75, 38);
         Text("SCORE", W - 363, 40, 10, Muted, true);
         Button("pause", "일시정지", new(W - 154, 40, 90, 42), size: 13);
@@ -346,14 +355,26 @@ public partial class GameRoot
 
     private void DrawGrid()
     {
+        long exampleSongUs = IsExample ? SongUs : 0;
         for (int key = 1; key <= 9; key++)
         {
             Color color = Mixed(ColorBit(key));
             Rect2 rect = KeyRect(key);
-            bool down = _session?.IsDown(key) ?? false;
-            Round(rect, down ? color : color.Lightened(0.88f), 13, down ? color : color.Lightened(0.66f));
-            Center(key.ToString(), rect, 27, down ? Colors.White : color.Darkened(0.3f), true);
-            if (!down) DrawLine(new(rect.Position.X + 21, rect.End.Y - 14), new(rect.End.X - 21, rect.End.Y - 14), color, 3, true);
+            float lit = _session?.IsDown(key) == true ? 1f : 0f;
+            if (IsExample && lit == 0f && _exampleFadeStartUs[key] != long.MinValue)
+            {
+                float fadeProgress = (exampleSongUs - _exampleFadeStartUs[key]) / (float)ExampleKeyFadeUs;
+                float remaining = 1f - Math.Clamp(fadeProgress, 0f, 1f);
+                lit = remaining * remaining;
+            }
+
+            Round(rect, color.Lightened(0.88f).Lerp(color, lit), 13, color.Lightened(0.66f).Lerp(color, lit));
+            Center(key.ToString(), rect, 27, color.Darkened(0.3f).Lerp(Colors.White, lit), true);
+            if (lit < 1f)
+            {
+                color.A *= 1f - lit;
+                DrawLine(new(rect.Position.X + 21, rect.End.Y - 14), new(rect.End.X - 21, rect.End.Y - 14), color, 3, true);
+            }
         }
     }
 
@@ -365,7 +386,6 @@ public partial class GameRoot
             float alpha = Math.Max(0, 1 - t / 0.45f);
             if (alpha <= 0) continue;
             Color color = Mixed(ColorBit(flash.Key)); color.A = alpha;
-            Rect2 key = KeyRect(flash.Key);
             int lane = flash.Axis == Axis.C ? (flash.Key - 1) % 3 : 2 - (flash.Key - 1) / 3;
             Vector2 center = flash.Axis == Axis.C
                 ? new(Grid.X + lane * (Cell + Gap) + Cell / 2, JudgeY)
@@ -374,7 +394,7 @@ public partial class GameRoot
             {
                 DrawCircle(center, 7 + t * 50, new Color(color, alpha * 0.12f));
                 DrawArc(center, 11 + t * 45, 0, Mathf.Tau, 32, color, 2, true);
-                DrawRect(key.Grow(t * 13), color, false, 2);
+                if (!IsExample) DrawRect(KeyRect(flash.Key).Grow(t * 13), color, false, 2);
             }
             else
             {
@@ -400,7 +420,12 @@ public partial class GameRoot
     private void DrawResults()
     {
         if (_session is null) return;
-        DrawHeader(_auto ? "자동 연주 결과" : "플레이 결과");
+        DrawHeader(_playMode switch
+        {
+            PlayMode.Auto => "자동 연주 결과",
+            PlayMode.Example => "예시 연주 결과",
+            _ => "플레이 결과"
+        });
         Text("플레이 완료", 104, 207, 43, Ink, true);
         Text(_session.Chart.Title + "  /  " + _session.Chart.Difficulty, 107, 249, 20, Muted);
         Round(new(104, 288, W - 208, 352), Surface, 20, Line);
@@ -422,7 +447,8 @@ public partial class GameRoot
             Text(GradeName(grades[i]), W / 2 + 125, y, 19, Muted);
             Number(_session.Score.Counts[grades[i]].ToString(), W - 228, y + 3, 29);
         }
-        Button("restart", "한 번 더 플레이  →", new(104, 690, (W - 238) / 2, 65), true, 20);
+        Button("restart", IsExample ? "예시 다시 보기  →" : "한 번 더 플레이  →",
+            new(104, 690, (W - 238) / 2, 65), true, 20);
         Button("back", "곡 선택으로", new(W / 2 + 15, 690, (W - 238) / 2, 65), size: 19);
     }
 }

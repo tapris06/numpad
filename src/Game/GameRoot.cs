@@ -8,17 +8,21 @@ namespace NumpadNine.Game;
 public partial class GameRoot : Node2D
 {
     private enum Screen { Select, Playing, Paused, Results }
+    private enum PlayMode { Manual, Auto, Example }
     private sealed record Song(Chart Chart, string Source);
-    private sealed record ReplayInput(long TimeUs, int Key, bool Down);
+    private sealed record ReplayInput(long TimeUs, int Key, bool Down, bool IsTap);
     private sealed record HitFlash(int Key, Axis Axis, Grade Grade, long ErrorUs, double At);
     private readonly List<Song> _songs = [];
     private readonly Dictionary<string, Rect2> _buttons = [];
     private readonly List<HitFlash> _flashes = [];
     private readonly List<ReplayInput> _replay = [];
+    private readonly long[] _exampleFadeStartUs = new long[10];
     private readonly HashSet<string> _captured = [];
     private const int MinSpeedTenths = 5, MaxSpeedTenths = 50;
     private const int MaxSongOffsetMs = 500;
     private const int SongListRows = 4;
+    private const long ExampleTapFlashUs = 90_000;
+    private const long ExampleKeyFadeUs = 100_000;
     private static readonly string[] BuiltInCharts = [
         "res://content/charts/first-circuit-easy.chart.txt",
         "res://content/charts/first-circuit-normal.chart.txt",
@@ -27,12 +31,14 @@ public partial class GameRoot : Node2D
         "res://content/charts/long-wave-normal.chart.txt",
         "res://content/charts/long-wave-hard.chart.txt",
         "res://content/charts/spark-rush-easy.chart.txt",
-        "res://content/charts/spark-rush-normal.chart.txt"
+        "res://content/charts/spark-rush-normal.chart.txt",
+        "res://content/charts/spark-rush-hard.chart.txt"
     ];
     private static int BuiltInSongCount => BuiltInCharts.Length;
     private const double BaseScrollPixelsPerSecond = 174.0;
     private readonly int[] _fpsOptions = [60, 120, 180, 240];
     private Screen _screen;
+    private PlayMode _playMode;
     private int _selected, _songListStart, _speedTenths = 10, _offsetMs, _songOffsetMs, _replayIndex, _fpsIndex = 3;
     private float _volume = 0.7f;
     private AudioStreamPlayer _music = null!;
@@ -40,7 +46,7 @@ public partial class GameRoot : Node2D
     private PlaySession? _session;
     private long _originTick, _audioZeroTick, _audioOutputLatencyUs, _playEndUs, _pauseTick, _pausedSongUs;
     private long _lastSongUs = long.MinValue;
-    private bool _audioStarted, _musicFinished, _auto, _testExit, _captureBusy, _debug;
+    private bool _audioStarted, _musicFinished, _testExit, _captureBusy, _debug;
     private string _error = "", _captureDir = "";
     private double _age, _lastJudgmentAt = -10;
     private Grade? _lastGrade;
@@ -51,7 +57,9 @@ public partial class GameRoot : Node2D
     private long Tick => checked((long)Time.GetTicksUsec());
     private long SongUs => _screen == Screen.Paused ? _pausedSongUs
         : _lastSongUs = Math.Max(_lastSongUs, Tick - _originTick);
-    private long JudgeUs => SongUs + (_auto ? 0 : _offsetMs * 1000L);
+    private bool IsAutomatic => _playMode != PlayMode.Manual;
+    private bool IsExample => _playMode == PlayMode.Example;
+    private long JudgeUs => SongUs + (IsAutomatic ? 0 : _offsetMs * 1000L);
     private double SpeedMultiplier => _speedTenths / 10.0;
     private double ScrollPixelsPerSecond => BaseScrollPixelsPerSecond * SpeedMultiplier;
     private double ApproachSeconds => LaneLength / ScrollPixelsPerSecond;
@@ -83,7 +91,8 @@ public partial class GameRoot : Node2D
         string? requested = null;
         foreach (string arg in OS.GetCmdlineUserArgs())
         {
-            if (arg == "--autoplay") _auto = true;
+            if (arg == "--autoplay") _playMode = PlayMode.Auto;
+            else if (arg == "--example-play") _playMode = PlayMode.Example;
             else if (arg == "--input-audit") _debug = true;
             else if (arg == "--test-exit") _testExit = true;
             else if (arg.StartsWith("--capture-dir=")) _captureDir = arg[14..];
@@ -93,7 +102,7 @@ public partial class GameRoot : Node2D
         }
         if (requested is not null && LoadSong(requested)) _selected = _songs.Count - 1;
         SelectSong(_selected);
-        if (_auto && _songs.Count > 0) CallDeferred(MethodName.BeginPlay);
+        if (IsAutomatic && _songs.Count > 0) CallDeferred(MethodName.BeginPlay);
     }
 
     private bool LoadSong(string path)
@@ -179,11 +188,12 @@ public partial class GameRoot : Node2D
             _replay.Clear();
             foreach (var note in _session.Chart.Notes)
             {
-                _replay.Add(new(note.StartUs, note.Key, true));
-                _replay.Add(new(note.EndUs ?? note.StartUs + 1, note.Key, false));
+                _replay.Add(new(note.StartUs, note.Key, true, !note.IsHold));
+                _replay.Add(new(note.EndUs ?? note.StartUs + 1, note.Key, false, !note.IsHold));
             }
             _replay.Sort((a, b) => a.TimeUs != b.TimeUs ? a.TimeUs.CompareTo(b.TimeUs) : a.Down.CompareTo(b.Down));
             _replayIndex = 0;
+            Array.Fill(_exampleFadeStartUs, long.MinValue);
             _flashes.Clear();
             _lastGrade = null;
             _lastJudgmentAt = -10;
@@ -215,7 +225,7 @@ public partial class GameRoot : Node2D
                 }
             }
             long now = Math.Max(_session.TimeUs, JudgeUs);
-            if (_auto)
+            if (IsAutomatic)
             {
                 while (_replayIndex < _replay.Count && _replay[_replayIndex].TimeUs <= now)
                 {
@@ -224,7 +234,18 @@ public partial class GameRoot : Node2D
                     while (_replayIndex < _replay.Count && _replay[_replayIndex].TimeUs == at)
                     {
                         var input = _replay[_replayIndex++];
-                        if (input.Down) downs.Add(input.Key); else _session.Release(input.Key, at);
+                        if (input.Down)
+                        {
+                            downs.Add(input.Key);
+                            if (IsExample && input.IsTap)
+                                _exampleFadeStartUs[input.Key] = at + ExampleTapFlashUs;
+                        }
+                        else
+                        {
+                            _session.Release(input.Key, at);
+                            if (IsExample && !input.IsTap)
+                                _exampleFadeStartUs[input.Key] = at;
+                        }
                     }
                     if (downs.Count > 0) _session.PressKeys(downs, at);
                 }
@@ -286,7 +307,7 @@ public partial class GameRoot : Node2D
     private async void ExitAfterCapture()
     {
         await ToSignal(GetTree().CreateTimer(0.7), SceneTreeTimer.SignalName.Timeout);
-        GetTree().Quit(_auto && _session!.Score.Score != 1_010_000 ? 1 : 0);
+        GetTree().Quit(IsAutomatic && _session!.Score.Score != 1_010_000 ? 1 : 0);
     }
 
     private void PausePlay()
@@ -294,7 +315,7 @@ public partial class GameRoot : Node2D
         if (_screen != Screen.Playing || _session is null) return;
         _pausedSongUs = SongUs;
         _pauseTick = Tick;
-        _session.ReleaseAll(Math.Max(_session.TimeUs, JudgeUs));
+        if (!IsExample) _session.ReleaseAll(Math.Max(_session.TimeUs, JudgeUs));
         _music.StreamPaused = true;
         _screen = Screen.Paused;
     }
@@ -313,7 +334,7 @@ public partial class GameRoot : Node2D
     {
         _music.Stop();
         _screen = Screen.Select;
-        _auto = false;
+        _playMode = PlayMode.Manual;
         SaveSettings();
     }
 
@@ -341,7 +362,7 @@ public partial class GameRoot : Node2D
                     if (button.Value.HasPoint(mouse.Position)) { Activate(button.Key); break; }
         }
         if (input is not InputEventKey key || key.Echo) return;
-        if (_screen == Screen.Playing && !_auto && _session is not null)
+        if (_screen == Screen.Playing && !IsAutomatic && _session is not null)
         {
             int number = NumpadKey(key);
             if (number > 0)
@@ -357,7 +378,8 @@ public partial class GameRoot : Node2D
         {
             case Key.Enter:
             case Key.KpEnter:
-                if (_screen == Screen.Select || _screen == Screen.Results) BeginPlay();
+                if (_screen == Screen.Select) Activate("play");
+                else if (_screen == Screen.Results) BeginPlay();
                 else if (_screen == Screen.Paused) ResumePlay();
                 break;
             case Key.Escape:
@@ -374,7 +396,7 @@ public partial class GameRoot : Node2D
 
     public override void _Notification(int what)
     {
-        if (what == NotificationWMWindowFocusOut && !_auto) PausePlay();
+        if (what == NotificationWMWindowFocusOut && _playMode != PlayMode.Auto) PausePlay();
     }
 
     private void Activate(string action)
@@ -388,7 +410,8 @@ public partial class GameRoot : Node2D
         }
         switch (action)
         {
-            case "play": BeginPlay(); break;
+            case "play": _playMode = PlayMode.Manual; BeginPlay(); break;
+            case "example": _playMode = PlayMode.Example; BeginPlay(); break;
             case "pause": PausePlay(); break;
             case "resume": ResumePlay(); break;
             case "restart": BeginPlay(); break;

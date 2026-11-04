@@ -1,4 +1,4 @@
-"""Generate the original fast track '스파크 러시' and sparse-chord tap charts."""
+"""Generate the original fast track '스파크 러시' and its three tap charts."""
 from pathlib import Path
 import json
 import math
@@ -43,6 +43,46 @@ NORMAL_BARS = [
 ]
 
 
+HARD_BARS = [
+    # Fixed four-hit motifs, each repeated twice in its bar.
+    (8, "3R,1R,2R,1R," * 2),
+    (8, "9R,7R,8R,7R," * 2),
+    (8, "4C,1C,7C,1C," * 2),
+    (8, "9C,3C,6C,3C," * 2),
+    (8, "4R,6R,5R,6R," * 2),
+    (8, "8C,2C,5C,2C," * 2),
+    (8, "1R,3R,2R,3R," * 2),
+    (4, "2C,5C,8C,,"),
+    # Introduce one chord per motif, then two chords around a fixed anchor.
+    (8, "69C,4C,3C,4C," * 2),
+    (8, "78R,5R,9R,5R," * 2),
+    (8, "8C,6C,25C,6C," * 2),
+    (8, "45R,8R,6R,8R," * 2),
+    (8, "69C,4C,36C,4C," * 2),
+    (8, "78R,5R,89R,5R," * 2),
+    (8, "47C,5C,14C,5C," * 2),
+    (4, "7C,4C,36C,,"),
+    # Move the anchor within the motif while keeping each bar on one axis.
+    (8, "12R,5R,23R,5R," * 2),
+    (8, "14C,5C,47C,5C," * 2),
+    (8, "46R,2R,56R,2R," * 2),
+    (8, "58C,4C,25C,6C," * 2),
+    (8, "39C,5C,69C,8C," * 2),
+    (8, "79R,4R,89R,6R," * 2),
+    (8, "14C,2C,47C,8C," * 2),
+    (4, "9R,5R,12R,,"),
+    # Switch the anchor halfway through, then reprise the original chord trill.
+    (8, "69C,4C,36C,4C,69C,5C,36C,5C,"),
+    (8, "12R,5R,23R,5R,12R,4R,23R,4R,"),
+    (8, "58C,6C,25C,6C,58C,3C,25C,3C,"),
+    (8, "45R,8R,56R,8R,45R,7R,56R,7R,"),
+    (8, "14C,5C,47C,5C,14C,6C,47C,6C,"),
+    (8, "78R,5R,89R,5R,78R,2R,89R,2R,"),
+    (8, "69C,4C,36C,4C," * 2),
+    (4, "7C,5C,69C,,"),
+]
+
+
 def write_chart(difficulty, bars):
     events, moments, chords, eighth_bars = [], 0, 0, 0
     if len(bars) != 32:
@@ -52,6 +92,7 @@ def write_chart(difficulty, bars):
         if divider not in (4, 8) or len(slots) != divider + 1 or slots[-1]:
             raise ValueError(f"{difficulty}: invalid bar {bar + 1}")
         eighth_bars += divider == 8
+        directions = set()
         for slot, chord in enumerate(slots[:-1]):
             if not chord:
                 continue
@@ -61,6 +102,7 @@ def write_chart(difficulty, bars):
                 match = re.fullmatch(r"([1-9]+)([RC])", token)
                 if match is None:
                     raise ValueError(f"Invalid tap token: {token}")
+                directions.add(match[2])
                 for digit in match[1]:
                     key = int(digit)
                     if key in keys:
@@ -71,20 +113,27 @@ def write_chart(difficulty, bars):
                 raise ValueError("Spark Rush has no three-key inputs")
             moments += 1
             chords += len(keys) == 2
-    chord_limit = 2 if difficulty == "EASY" else 4
-    if chords > chord_limit or chords / moments > 0.05:
+        if difficulty == "HARD" and divider == 8 and len(directions) != 1:
+            raise ValueError(f"HARD eighth-note bar {bar + 1} must use one direction")
+    chord_limit = {"EASY": 2, "NORMAL": 4}.get(difficulty)
+    if chord_limit is not None and (chords > chord_limit or chords / moments > 0.05):
         raise ValueError("Simultaneous inputs must remain sparse")
     if difficulty == "EASY" and eighth_bars:
         raise ValueError("EASY must stay on the quarter-note grid")
     end_us = FIRST_US + (len(bars) * 4 + 4) * BEAT_US
     if end_us <= max(n[2] + 90_001 for n in events) or end_us > DURATION * 1_000_000:
         raise ValueError("Invalid chart end marker")
-    sections = (["4비트와 쉬는 박", "한 방향 단타와 느린 방향 전환", "행·열 단타 패턴", "단타 마무리와 드문 2키 악센트"]
-                if difficulty == "EASY" else
-                ["4비트 연속 단타", "양방향 전환", "행·열 연속 패턴", "빠른 단타 마무리"])
+    sections = {
+        "EASY": ["4비트와 쉬는 박", "한 방향 단타와 느린 방향 전환", "행·열 단타 패턴", "단타 마무리와 드문 2키 악센트"],
+        "NORMAL": ["4비트 연속 단타", "양방향 전환", "행·열 연속 패턴", "빠른 단타 마무리"],
+        "HARD": ["한 마디 고정 트릴", "합성 동타와 단타 교대", "트릴의 기준 키 이동", "후반부 기준 키 전환과 합성 트릴 재현"],
+    }[difficulty]
     lines = ["&format=numpad-simai-v1", "&title=스파크 러시", "&artist=Numpad Nine · Original Demo",
-             f"&difficulty={difficulty}", "&audio=../audio/spark-rush.wav", "&first=2", "&inote=", f"({BPM}){{4}}",
-             f"// 단타 중심. 2키 동타는 최대 {chord_limit}회, 3키 동타 없음."]
+             f"&difficulty={difficulty}", "&audio=../audio/spark-rush.wav", "&first=2", "&inote=", f"({BPM}){{4}}"]
+    if difficulty == "HARD":
+        lines.append("// 8비트 트릴 마디마다 한 방향을 사용. 각 8마디 구간의 끝은 4비트로 전환.")
+    else:
+        lines.append(f"// 단타 중심. 2키 동타는 최대 {chord_limit}회, 3키 동타 없음.")
     current_divider = 4
     for bar, (divider, line) in enumerate(bars):
         if bar % 8 == 0:
@@ -180,4 +229,5 @@ def make_music():
 if __name__ == "__main__":
     write_chart("EASY", [(4, line) for line in EASY_BARS])
     write_chart("NORMAL", NORMAL_BARS)
+    write_chart("HARD", HARD_BARS)
     make_music()
