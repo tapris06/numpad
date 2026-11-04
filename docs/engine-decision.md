@@ -13,7 +13,7 @@
 | 렌더러 | Compatibility |
 | 초기 배포 대상 | Windows x86_64 |
 | 개발용 SDK | .NET 10 SDK, Windows x64 |
-| 채보 작성 형식 | simai 기반 `.chart.txt`, 버튼 1~9 + 방향 R/C |
+| 채보 작성 형식 | 넘패드 채보 `.npd`, 버튼 1~9 + 방향 R/C |
 | 초기 배포 형태 | 실행 파일과 필요한 데이터·런타임 파일을 포함한 폴더를 ZIP으로 배포 |
 
 확인일의 [Godot 공식 Windows 다운로드](https://godotengine.org/download/windows/)는 4.7.2와 해당 .NET 에디션을 제공한다. C# 개발에는 .NET 에디션과 SDK가 필요하다. [Godot C# 준비 사항](https://docs.godotengine.org/en/stable/tutorials/scripting/c_sharp/c_sharp_basics.html)

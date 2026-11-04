@@ -45,7 +45,8 @@ public static class ChartParser
 
         string Required(string name) => headers.TryGetValue(name, out var value) && value.Length > 0
             ? value : throw new ChartException($"필수 항목 누락: {name}");
-        if (Required("format") != "numpad-simai-v1") throw new ChartException("지원하지 않는 채보 형식입니다.");
+        if (Required("format") != "numpad-chart-v1")
+            throw new ChartException("지원하지 않는 채보 형식입니다.");
         string title = Required("title"), audio = Required("audio");
         if (!decimal.TryParse(Required("first"), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
                 CultureInfo.InvariantCulture, out decimal first))

@@ -10,7 +10,7 @@ void Test(string name, Action action)
     try { action(); passed++; Console.WriteLine($"PASS {name}"); }
     catch (Exception e) { failed++; Console.WriteLine($"FAIL {name}: {e}"); }
 }
-string Source(string body, string first = "0") => $"&format=numpad-simai-v1\n&title=Test\n&audio=music.wav\n&first={first}\n&inote=\n{body}";
+string Source(string body, string first = "0") => $"&format=numpad-chart-v1\n&title=Test\n&audio=music.wav\n&first={first}\n&inote=\n{body}";
 Chart Make(params NoteEvent[] notes) => new("Test", "", "", "music.wav", 0, 20_000_000, notes);
 PlaySession Hold() => new(Make(new NoteEvent(0, 6, Axis.C, 1_000_000, 3_000_000)));
 string root = args.Length > 0 ? Path.GetFullPath(args[0]) : Directory.GetCurrentDirectory();
@@ -40,7 +40,7 @@ Test("sustain thresholds use exact integer comparisons", () =>
 
 Test("reference chart compiles to the documented events", () =>
 {
-    var chart = ChartParser.Parse(File.ReadAllText(Path.Combine(root, "examples/charts/spec-demo.chart.txt")));
+    var chart = ChartParser.Parse(File.ReadAllText(Path.Combine(root, "examples/charts/spec-demo.npd")));
     using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "examples/charts/spec-demo.chart.json")));
     var expected = json.RootElement.GetProperty("notes").EnumerateArray().ToArray();
     Equal(9, chart.Notes.Count); Equal(13L, chart.Weight); Equal(4_500_000L, chart.EndUs);
@@ -98,7 +98,7 @@ Test("reject malformed notes and metadata", () =>
         "(120){4}6Ch[#2],E", "(120){4}6C// no comma\nE", "(120){4}6C,(150)/7C,E"];
     foreach (string body in invalid) Reject(() => ChartParser.Parse(Source(body)));
     Reject(() => ChartParser.Parse(Source("(120){4}6C,E").Replace("&title=Test", "&title=Test\n&title=Duplicate")));
-    Reject(() => ChartParser.Parse(Source("(120){4}6C,E").Replace("numpad-simai-v1", "unknown")));
+    Reject(() => ChartParser.Parse(Source("(120){4}6C,E").Replace("numpad-chart-v1", "unknown")));
 });
 Test("syntax errors include a location", () =>
 {
@@ -217,7 +217,7 @@ Test("automatic miss and simultaneous sustain success share combo semantics", ()
 });
 Test("all-perfect reference autoplay reaches exact normalized score", () =>
 {
-    var chart = ChartParser.Parse(File.ReadAllText(Path.Combine(root, "examples/charts/spec-demo.chart.txt")));
+    var chart = ChartParser.Parse(File.ReadAllText(Path.Combine(root, "examples/charts/spec-demo.npd")));
     var session = new PlaySession(chart);
     session.PressKeys([6, 9, 3], 0); session.ReleaseAll(1000);
     session.Press(7, 1000000); session.Press(4, 1500000);
@@ -238,7 +238,7 @@ Test("time cannot run backwards", () =>
 
 Test("bundled demo charts validate and autoplay to exact maximum", () =>
 {
-    foreach (string file in Directory.GetFiles(Path.Combine(root, "content/charts"), "*.chart.txt"))
+    foreach (string file in Directory.GetFiles(Path.Combine(root, "content/charts"), "*.npd"))
     {
         var chart = ChartParser.Parse(File.ReadAllText(file));
         var session = new PlaySession(chart);

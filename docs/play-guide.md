@@ -24,7 +24,7 @@
 실행 인자 `--example-play`로도 시작할 수 있습니다. 예시 연주와 개발용 `--autoplay` 모두 `--chart=`로 채보를 선택합니다.
 
 ```powershell
-.\build\windows\NumpadNine.exe -- --example-play --chart=res://content/charts/spark-rush-hard.chart.txt
+.\build\windows\NumpadNine.exe -- --example-play --chart=res://content/charts/spark-rush-hard.npd
 ```
 
 ## 설정
@@ -55,7 +55,7 @@ NORMAL은 BPM 120의 4비트 간격으로 합성 동타, 한 방향의 여러 �
 
 목록에 기본 채보 아홉 개와 마지막으로 연 외부 채보가 표시됩니다. 휠이나 목록의 ↑·↓ 버튼으로 이동할 수 있습니다.
 
-직접 작성한 `.chart.txt`는 곡 선택 화면의 `채보 파일 열기`로 불러옵니다. 음원은 채보 파일 기준 상대 경로로 지정하며 WAV·OGG·MP3를 지원합니다. 채보 문법은 프로젝트의 `docs/chart-notation.md`를 참고합니다.
+직접 작성한 `.npd`는 곡 선택 화면의 `채보 파일 열기`로 불러옵니다. 음원은 채보 파일 기준 상대 경로로 지정하며 WAV·OGG·MP3를 지원합니다. 채보 문법은 프로젝트의 `docs/chart-notation.md`를 참고합니다.
 
 ## 개발 실행
 

@@ -123,11 +123,11 @@ def make_chart(hard):
     # Final rest leaves time for the last judgment and audio release.
     lines += [",", ",", ",", "E"]
     text = "\n".join([
-        "&format=numpad-simai-v1", "&title=첫 회로", "&artist=Numpad Nine · Original Demo",
+        "&format=numpad-chart-v1", "&title=첫 회로", "&artist=Numpad Nine · Original Demo",
         f"&difficulty={'HARD' if hard else 'EASY'}", "&audio=../audio/first-circuit.wav",
         "&first=2", "&inote=", f"(120){{{divider}}}", *lines, ""
     ])
-    path = ROOT / f"content/charts/first-circuit-{'hard' if hard else 'easy'}.chart.txt"
+    path = ROOT / f"content/charts/first-circuit-{'hard' if hard else 'easy'}.npd"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     print(path.relative_to(ROOT))

@@ -128,7 +128,7 @@ def write_chart(difficulty, bars):
         "NORMAL": ["4비트 연속 단타", "양방향 전환", "행·열 연속 패턴", "빠른 단타 마무리"],
         "HARD": ["한 마디 고정 트릴", "합성 동타와 단타 교대", "트릴의 기준 키 이동", "후반부 기준 키 전환과 합성 트릴 재현"],
     }[difficulty]
-    lines = ["&format=numpad-simai-v1", "&title=스파크 러시", "&artist=Numpad Nine · Original Demo",
+    lines = ["&format=numpad-chart-v1", "&title=스파크 러시", "&artist=Numpad Nine · Original Demo",
              f"&difficulty={difficulty}", "&audio=../audio/spark-rush.wav", "&first=2", "&inote=", f"({BPM}){{4}}"]
     if difficulty == "HARD":
         lines.append("// 8비트 트릴 마디마다 한 방향을 사용. 각 8마디 구간의 끝은 4비트로 전환.")
@@ -142,7 +142,7 @@ def write_chart(difficulty, bars):
         lines.append(prefix + line)
         current_divider = divider
     lines += ["", "// 마지막 입력 이후 음원 릴리스.", "{4},,,,", "E", ""]
-    path = ROOT / f"content/charts/spark-rush-{difficulty.lower()}.chart.txt"
+    path = ROOT / f"content/charts/spark-rush-{difficulty.lower()}.npd"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
     print(json.dumps({"chart": str(path.relative_to(ROOT)), "taps": len(events), "input_moments": moments,

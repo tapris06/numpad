@@ -152,7 +152,7 @@ def write_chart(difficulty, bars):
                  "양방향 롱잡 · 12마디 끝은 한 행의 검정 합성",
                  "2키 롱잡 변형 · 16마디 끝은 한 행의 합성 2키와 반대 방향 1키"],
     }[difficulty]
-    lines = ["&format=numpad-simai-v1", "&title=긴 파동", "&artist=Numpad Nine · Original Demo",
+    lines = ["&format=numpad-chart-v1", "&title=긴 파동", "&artist=Numpad Nine · Original Demo",
              f"&difficulty={difficulty}", "&audio=../audio/long-wave.wav", "&first=2", "&inote=", f"({BPM}){{4}}"]
     if difficulty == "HARD":
         lines += ["// 본 구간 64박은 모두 4비트 새 입력. 8비트 분할 없음.",
@@ -163,7 +163,7 @@ def write_chart(difficulty, bars):
             lines += ["", f"// {index + 1}~{index + 4}마디: {sections[index // 4]}"]
         lines.append(line)
     lines += ["", "// 마지막 롱노트 종료 후 음원 릴리스.", ",,,,", "E", ""]
-    path = ROOT / f"content/charts/long-wave-{difficulty.lower()}.chart.txt"
+    path = ROOT / f"content/charts/long-wave-{difficulty.lower()}.npd"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
     holds = [n for n in events if n[3] is not None]

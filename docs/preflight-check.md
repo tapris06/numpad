@@ -25,7 +25,7 @@
 
 ## 2. 예제와 문서 검증
 
-[텍스트 채보](../examples/charts/spec-demo.chart.txt)를 현재 예제의 BPM 120, 4분음표 간격으로 전개하여 [이벤트 JSON](../examples/charts/spec-demo.chart.json)과 비교했다.
+[텍스트 채보](../examples/charts/spec-demo.npd)를 현재 예제의 BPM 120, 4분음표 간격으로 전개하여 [이벤트 JSON](../examples/charts/spec-demo.chart.json)과 비교했다.
 
 - 입력 이벤트 9개: 단타 7개, 롱노트 2개.
 - 두 롱노트의 구간: 1000~3000ms, 1500~2500ms.

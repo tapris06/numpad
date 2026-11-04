@@ -24,15 +24,15 @@ public partial class GameRoot : Node2D
     private const long ExampleTapFlashUs = 90_000;
     private const long ExampleKeyFadeUs = 100_000;
     private static readonly string[] BuiltInCharts = [
-        "res://content/charts/first-circuit-easy.chart.txt",
-        "res://content/charts/first-circuit-normal.chart.txt",
-        "res://content/charts/first-circuit-hard.chart.txt",
-        "res://content/charts/long-wave-easy.chart.txt",
-        "res://content/charts/long-wave-normal.chart.txt",
-        "res://content/charts/long-wave-hard.chart.txt",
-        "res://content/charts/spark-rush-easy.chart.txt",
-        "res://content/charts/spark-rush-normal.chart.txt",
-        "res://content/charts/spark-rush-hard.chart.txt"
+        "res://content/charts/first-circuit-easy.npd",
+        "res://content/charts/first-circuit-normal.npd",
+        "res://content/charts/first-circuit-hard.npd",
+        "res://content/charts/long-wave-easy.npd",
+        "res://content/charts/long-wave-normal.npd",
+        "res://content/charts/long-wave-hard.npd",
+        "res://content/charts/spark-rush-easy.npd",
+        "res://content/charts/spark-rush-normal.npd",
+        "res://content/charts/spark-rush-hard.npd"
     ];
     private static int BuiltInSongCount => BuiltInCharts.Length;
     private const double BaseScrollPixelsPerSecond = 174.0;
@@ -75,7 +75,7 @@ public partial class GameRoot : Node2D
         {
             Access = FileDialog.AccessEnum.Filesystem,
             FileMode = FileDialog.FileModeEnum.OpenFile,
-            Filters = ["*.chart.txt ; Numpad Nine 채보"],
+            Filters = ["*.npd ; Numpad Nine 채보"],
             UseNativeDialog = true,
             Title = "채보 열기",
             ModeOverridesTitle = false

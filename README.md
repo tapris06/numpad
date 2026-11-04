@@ -43,7 +43,7 @@ Windows 배포본은 `build/windows/NumpadNine.exe`를 실행하거나 루트의
 - 판정선은 우선 3×3 블록에 가깝게 배치합니다.
 - 색상 배치·순서·반전 옵션 및 판정선 위치 조절은 후순위입니다.
 
-초기 완료 범위는 음악 플레이부터 결과 화면까지입니다. 채보는 simai를 참고한 [텍스트 표기](docs/chart-notation.md)로 직접 작성하며, 채보 편집기는 후순위입니다. `R`은 행 방향(오른쪽→왼쪽), `C`는 열 방향(위→아래)이며, `6C/9C`처럼 버튼 번호와 방향을 기록합니다. [작성 예제](examples/charts/spec-demo.chart.txt)와 [키·시간 이벤트 전개 예제](examples/charts/spec-demo.chart.json)를 함께 관리합니다.
+초기 완료 범위는 음악 플레이부터 결과 화면까지입니다. 채보는 [넘패드 채보 표기](docs/chart-notation.md)로 직접 작성하며, 채보 편집기는 후순위입니다. `R`은 행 방향(오른쪽→왼쪽), `C`는 열 방향(위→아래)이며, `6C/9C`처럼 버튼 번호와 방향을 기록합니다. [작성 예제](examples/charts/spec-demo.npd)와 [키·시간 이벤트 전개 예제](examples/charts/spec-demo.chart.json)를 함께 관리합니다.
 
 판정 시간표와 점수 계산식은 [판정·점수 상세](docs/judgment-and-scoring.md)에 정리합니다.
 
