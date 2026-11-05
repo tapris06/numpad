@@ -20,6 +20,7 @@ public partial class GameRoot : Node2D
     private readonly HashSet<string> _captured = [];
     private const int MinSpeedTenths = 5, MaxSpeedTenths = 50;
     private const int MaxSongOffsetMs = 500;
+    private const int PositionGuideStepMs = 100, DefaultPositionGuideMs = 500, MaxPositionGuideMs = 1000;
     private const int SongListRows = 4;
     private const long ExampleTapFlashUs = 90_000;
     private const long ExampleKeyFadeUs = 100_000;
@@ -47,6 +48,8 @@ public partial class GameRoot : Node2D
     private long _originTick, _audioZeroTick, _audioOutputLatencyUs, _playEndUs, _pauseTick, _pausedSongUs;
     private long _lastSongUs = long.MinValue;
     private bool _audioStarted, _musicFinished, _testExit, _captureBusy, _debug, _invertColors;
+    private bool _positionGuide;
+    private int _positionGuideMs = DefaultPositionGuideMs;
     private string _error = "", _captureDir = "";
     private double _age, _lastJudgmentAt = -10;
     private Grade? _lastGrade;
@@ -421,6 +424,15 @@ public partial class GameRoot : Node2D
             case "songs-up": ScrollSongList(-1); break;
             case "songs-down": ScrollSongList(1); break;
             case "invert-colors": _invertColors = !_invertColors; SaveSettings(); break;
+            case "position-guide": _positionGuide = !_positionGuide; SaveSettings(); break;
+            case "position-guide-time-" when _positionGuide:
+                _positionGuideMs = Math.Max(PositionGuideStepMs, _positionGuideMs - PositionGuideStepMs);
+                SaveSettings();
+                break;
+            case "position-guide-time+" when _positionGuide:
+                _positionGuideMs = Math.Min(MaxPositionGuideMs, _positionGuideMs + PositionGuideStepMs);
+                SaveSettings();
+                break;
             case "speed-": _speedTenths = Math.Max(MinSpeedTenths, _speedTenths - 1); SaveSettings(); break;
             case "speed+": _speedTenths = Math.Min(MaxSpeedTenths, _speedTenths + 1); SaveSettings(); break;
             case "offset-": _offsetMs = Math.Max(-150, _offsetMs - 5); SaveSettings(); break;
@@ -446,6 +458,10 @@ public partial class GameRoot : Node2D
             _songOffsetMs = Math.Clamp(_settings.GetValue("play", "song_offset", 0).AsInt32(), -MaxSongOffsetMs, MaxSongOffsetMs);
             _volume = Math.Clamp((float)_settings.GetValue("play", "volume", 0.7).AsDouble(), 0, 1);
             _invertColors = _settings.GetValue("play", "invert_colors", false).AsBool();
+            _positionGuide = _settings.GetValue("play", "position_guide", false).AsBool();
+            int savedGuideMs = _settings.GetValue("play", "position_guide_ms", DefaultPositionGuideMs).AsInt32();
+            _positionGuideMs = Math.Clamp(savedGuideMs / PositionGuideStepMs * PositionGuideStepMs,
+                PositionGuideStepMs, MaxPositionGuideMs);
             int savedFps = _settings.GetValue("play", "fps", 240).AsInt32();
             int savedIndex = Array.IndexOf(_fpsOptions, savedFps);
             _fpsIndex = savedIndex >= 0 ? savedIndex : 3;
@@ -461,6 +477,8 @@ public partial class GameRoot : Node2D
         _settings.SetValue("play", "song_offset", _songOffsetMs);
         _settings.SetValue("play", "volume", _volume);
         _settings.SetValue("play", "invert_colors", _invertColors);
+        _settings.SetValue("play", "position_guide", _positionGuide);
+        _settings.SetValue("play", "position_guide_ms", _positionGuideMs);
         _settings.SetValue("play", "fps", _fpsOptions[_fpsIndex]);
         _settings.Save("user://settings.cfg");
     }

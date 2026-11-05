@@ -37,6 +37,7 @@ public partial class GameRoot
     private float W => GetViewportRect().Size.X;
     private float H => GetViewportRect().Size.Y;
     private const float Cell = 76, Gap = 8;
+    private const int KeyCornerRadius = 13;
     private Vector2 Grid => new(168, H - 276);
     private float GridSize => Cell * 3 + Gap * 2;
     private float JudgeY => Grid.Y - 18;
@@ -243,9 +244,19 @@ public partial class GameRoot
         float panelX = W - 522;
         Round(new(panelX, 282, 450, 377), Surface, 16, Line);
         Text("키 배치", panelX + 28, 324, 22, Ink, true);
+        Button("position-guide", _positionGuide ? "위치 보조 켜짐" : "위치 보조 꺼짐",
+            new(panelX + 124, 300, 143, 38), _positionGuide, 15);
         Button("invert-colors", _invertColors ? "색 반전 켜짐" : "색 반전 꺼짐",
-            new(panelX + 262, 300, 160, 38), _invertColors, 15);
-        DrawPreviewGrid(new(panelX + 117, 354), 62);
+            new(panelX + 279, 300, 143, 38), _invertColors, 15);
+        DrawPreviewGrid(new(panelX + 50, 354), 62);
+        if (_positionGuide)
+        {
+            float guideX = panelX + 280;
+            Center("보조 표시 시간", new(guideX, 395, 142, 24), 14, Muted, true);
+            Button("position-guide-time-", "−", new(guideX, 429, 32, 38), size: 16);
+            Center($"{_positionGuideMs} ms", new(guideX + 32, 429, 78, 38), 16, Ink, true);
+            Button("position-guide-time+", "+", new(guideX + 110, 429, 32, 38), size: 16);
+        }
         Text("FPS 제한", panelX + 28, 587, 13, Muted, true);
         for (int i = 0; i < _fpsOptions.Length; i++)
             Button($"fps:{_fpsOptions[i]}", _fpsOptions[i].ToString(),
@@ -338,6 +349,7 @@ public partial class GameRoot
         DrawLine(new(Grid.X - 6, JudgeY), new(Grid.X + GridSize + 6, JudgeY), Ink, 3, true);
         DrawLine(new(JudgeX, Grid.Y - 6), new(JudgeX, Grid.Y + GridSize + 6), Ink, 3, true);
         DrawGrid();
+        if (_positionGuide) DrawPositionGuide(_session);
         DrawHitFlashes();
 
         float centerX = JudgeX + 240;
@@ -466,7 +478,7 @@ public partial class GameRoot
                 lit = remaining * remaining;
             }
 
-            Round(rect, Tint(color, KeyFillTint).Lerp(color, lit), 13,
+            Round(rect, Tint(color, KeyFillTint).Lerp(color, lit), KeyCornerRadius,
                 Tint(color, _invertColors ? RgbKeyBorderTint : 0.66f).Lerp(color, lit));
             Center(key.ToString(), rect, 27, KeyLabel(color, 0.3f).Lerp(OnInk, lit), true);
             if (lit < 1f)
@@ -474,6 +486,26 @@ public partial class GameRoot
                 color.A *= 1f - lit;
                 DrawLine(new(rect.Position.X + 21, rect.End.Y - 14), new(rect.End.X - 21, rect.End.Y - 14), color, 3, true);
             }
+        }
+    }
+
+    private void DrawPositionGuide(PlaySession session)
+    {
+        const float startInset = 8;
+        long leadUs = _positionGuideMs * 1000L;
+        long now = SongUs;
+        long previewEnd = now + leadUs;
+        var upcoming = session.States.Where(s => !s.Head.HasValue && s.Note.StartUs < previewEnd)
+            .OrderByDescending(s => s.Note.StartUs);
+        foreach (var state in upcoming)
+        {
+            NoteEvent note = state.Note;
+            float progress = 1f - Math.Clamp((note.StartUs - now) / (float)leadUs, 0f, 1f);
+            float inset = startInset * (1f - progress);
+            float alpha = progress * progress * (3f - 2f * progress);
+            int radius = KeyCornerRadius - (int)MathF.Round(inset * 0.5f);
+            Color border = new(Mixed(ColorBit(note.Key)), alpha);
+            Round(KeyRect(note.Key).Grow(-inset), Colors.Transparent, radius, border, borderWidth: 2);
         }
     }
 
