@@ -262,7 +262,8 @@ public partial class GameRoot : Node2D
         }
         else if (_screen == Screen.Select && _age > 0.5) RequestCapture("select");
         _flashes.RemoveAll(f => _age - f.At > 0.65);
-        QueueRedraw();
+        // Canvas redraw callbacks can allocate OpenGL buffers even when Godot skips presenting frames.
+        if (RenderingServer.RenderLoopEnabled && DisplayServer.WindowCanDraw()) QueueRedraw();
     }
 
     private void CollectJudgments()
